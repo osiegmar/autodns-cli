@@ -1,0 +1,12 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# IntelliJ IDEA
+*.iml
+.idea/
+
+# PyPI
+autodnscli.egg-info/
+dist/
+build/
