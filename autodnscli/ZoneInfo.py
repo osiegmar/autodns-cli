@@ -14,8 +14,6 @@
 
 import xml.etree.ElementTree as ET
 
-REC_FMT = '{}\t{}\tIN\t{}\t{}'
-
 
 class ZoneInfo:
 
@@ -36,50 +34,61 @@ class ZoneInfo:
                            'owner', 'soa', 'system_ns', 'updated_by']
 
         for zone in response.findall('result/data/zone'):
+            ET.dump(zone)
             for rec in list(zone):
-                if rec.tag in ignored_records:
-                    pass
-                elif rec.tag == 'nserver':
-                    self.print_nserver(rec, zone)
-                elif rec.tag == 'main':
-                    self.print_main(rec)
-                elif rec.tag == 'www_include':
-                    self.print_www_include(rec, zone)
-                elif rec.tag == 'rr':
-                    self.print_rr(rec, zone)
-                else:
-                    print("Unsupported element: " + rec.tag)
-                    ET.dump(rec)
+                if rec.tag not in ignored_records:
+                    parsed_record = self.parse_record(rec, zone)
 
-    def print_nserver(self, rec, zone):
-        soa_rec = zone.find('soa')
-        print(REC_FMT.format(
-            '@', soa_rec.find('default').text, 'NS', rec.find('name').text) + '.')
+                    if parsed_record is not None:
+                        parsed_record.print_out()
 
-    def print_main(self, rec):
-        print(REC_FMT.format(
-            '@', rec.find('ttl').text, 'A', rec.find('value').text))
+    def parse_record(self, rec, zone):
+        if rec.tag == 'nserver':
+            return self.parse_nserver(rec, zone)
+        if rec.tag == 'main':
+            return self.parse_main(rec, zone)
+        if rec.tag == 'www_include':
+            return self.parse_www_include(rec, zone)
+        if rec.tag == 'rr':
+            return self.parse_rr(rec, zone)
 
-    def print_www_include(self, rec, zone):
-        if rec.text == '1':
-            main_rec = zone.find('main')
-            if main_rec is not None \
-                    and main_rec.find('ttl') is not None \
-                    and main_rec.find('value') is not None:
-                print(REC_FMT.format(
-                    'www', main_rec.find('ttl').text, 'A', main_rec.find('value').text))
+        raise Exception("Unsupported element: " + rec.tag)
 
-    def print_rr(self, rec, zone):
-        name = rec.find('name').text if rec.find('name').text is not None else '@'
+    def parse_nserver(self, rec, zone):
+        return ZoneRecord('@', zone.findtext('soa/default'), 'NS', rec.find('name').text + '.')
+
+    def parse_main(self, rec, zone):
+        ttl = rec.find('ttl').text if rec.find('ttl') is not None else zone.findtext('soa/default')
+        return ZoneRecord('@', ttl, 'A', rec.find('value').text)
+
+    def parse_www_include(self, rec, zone):
+        if rec.text != '1':
+            return None
+
+        main_rec = zone.find('main')
+        if main_rec is None or main_rec.find('ttl') is None or main_rec.find('value') is None:
+            return None
+
+        return ZoneRecord('www', main_rec.find('ttl').text, 'A', main_rec.find('value').text)
+
+    def parse_rr(self, rec, zone):
+        name = rec.find('name').text or '@'
+        ttl = rec.find('ttl').text if rec.find('ttl') is not None else zone.findtext('soa/default')
         pref = rec.find('pref').text + " " if rec.find('pref') is not None else ''
-        if rec.find('ttl') is not None:
-            ttl = rec.find('ttl').text
-        else:
-            soa_rec = zone.find('soa')
-            ttl = soa_rec.find('default').text
+        type = rec.find('type').text
+        value = pref + rec.find('value').text
+        if type == 'TXT':
+            value = '"' + value + '"'
+        return ZoneRecord(name, ttl, type, value)
 
-        print(REC_FMT.format(
-            name,
-            ttl,
-            rec.find('type').text,
-            pref + rec.find('value').text))
+
+class ZoneRecord:
+
+    def __init__(self, name, ttl, type, value):
+        self.name = name
+        self.ttl = ttl
+        self.type = type
+        self.value = value
+
+    def print_out(self):
+        print('{}\t{}\tIN\t{}\t{}'.format(self.name, self.ttl, self.type, self.value))
