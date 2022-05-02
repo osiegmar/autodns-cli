@@ -20,6 +20,10 @@ This project is **WORK IN PROGRESS**.
     autodns zone-info --zone <zone-name>
 
 
+## Find wildcard records
+
+    autodns find-wildcard-records
+
 ## Copyright
 
 Copyright 2018 Oliver Siegmar
