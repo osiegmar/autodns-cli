@@ -20,6 +20,8 @@ import sys
 from ApiClient import ApiClient
 from ZoneInfo import ZoneInfo
 from ZoneList import ZoneList
+from IpFinder import IpFinder
+from WildcardFinder import WildcardFinder
 
 
 def main():
@@ -27,6 +29,8 @@ def main():
     parser.add_argument('commands', metavar='cmd', nargs='+',
                         help='commands to operate')
     parser.add_argument('--zone')
+    parser.add_argument('--ip')
+
     args = parser.parse_args()
 
     apiClient = ApiClient(os.environ['AUTODNS_USERNAME'], os.environ['AUTODNS_PASSWORD'],
@@ -37,6 +41,10 @@ def main():
             ZoneList(apiClient).run()
         elif cmd == 'zone-info':
             ZoneInfo(apiClient).run(args.zone)
+        elif cmd == 'find-wildcard-records':
+            WildcardFinder(apiClient).run()
+        elif cmd == 'find-ip-records':
+            IpFinder(apiClient).run(args.ip)
         else:
             sys.exit("Unknown command: " + cmd)
 

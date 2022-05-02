@@ -14,13 +14,12 @@
 
 import xml.etree.ElementTree as ET
 
-
 class ZoneInfo:
 
     def __init__(self, apiClient):
         self.apiClient = apiClient
 
-    def run(self, a_zone_name):
+    def run(self, a_zone_name, printout=True):
         request = self.apiClient.new_req('0205')
         task = request.find('task')
 
@@ -31,16 +30,24 @@ class ZoneInfo:
         response = self.apiClient.call_api(ET.tostring(request).decode())
 
         ignored_records = ['changed', 'comment', 'created', 'domainsafe', 'name', 'ns_action',
-                           'owner', 'soa', 'system_ns', 'updated_by']
+                           'owner', 'soa', 'system_ns', 'updated_by', 'dnssec', 'idn', 'ns_group']
+
+        record_array = []
 
         for zone in response.findall('result/data/zone'):
-            ET.dump(zone)
+            # ET.dump(zone)
             for rec in list(zone):
                 if rec.tag not in ignored_records:
                     parsed_record = self.parse_record(rec, zone)
 
-                    if parsed_record is not None:
+                    if parsed_record is None:
+                        continue
+
+                    if printout is True:
                         parsed_record.print_out()
+                    else:
+                        record_array.append(parsed_record)
+        return record_array
 
     def parse_record(self, rec, zone):
         if rec.tag == 'nserver':
